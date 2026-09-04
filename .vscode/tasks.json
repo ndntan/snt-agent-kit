@@ -1,0 +1,69 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Install Deps",
+      "type": "shell",
+      "command": "npm",
+      "args": ["install"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "group": "dev",
+        "panel": "dedicated",
+        "reveal": "always",
+        "close": true
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "Start Widget Showcase",
+      "detail": "Vite dev server on :3100 — HMRs packages/snt-agent-kit/src directly (no build step).",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "showcase"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "dependsOn": ["Install Deps"],
+      "isBackground": true,
+      "presentation": {
+        "group": "dev",
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "group": {
+        "kind": "build",
+        "isDefault": true
+      },
+      "problemMatcher": {
+        "owner": "vite",
+        "pattern": {
+          "regexp": "^$"
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*VITE v.*",
+          "endsPattern": ".*ready in.*"
+        }
+      }
+    },
+    {
+      "label": "Build Kit",
+      "detail": "vite lib build → packages/snt-agent-kit/dist/. The repo's verification step (there is no test suite).",
+      "type": "shell",
+      "command": "npm",
+      "args": ["run", "build"],
+      "options": {
+        "cwd": "${workspaceFolder}"
+      },
+      "presentation": {
+        "group": "dev",
+        "panel": "dedicated",
+        "reveal": "always"
+      },
+      "problemMatcher": []
+    }
+  ]
+}

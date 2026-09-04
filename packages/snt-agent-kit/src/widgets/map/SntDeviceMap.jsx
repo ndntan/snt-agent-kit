@@ -5,7 +5,8 @@
  * compose <SntMap> with the layer components it actually needs.
  *
  * Props (mirroring the old SntMap):
- *   mapboxKey, locationiqKey, height, width, center, zoom, onMapReady
+ *   mapboxKey, locationiqKey, streetStyle, height, width, center, zoom,
+ *   onMapReady
  *   geozones, orgId, showGeozones, showGeozoneSelector
  *   devices, showDevices
  */
@@ -16,6 +17,7 @@ import { SntDeviceLayer } from './SntDeviceLayer'
 export function SntDeviceMap({
   mapboxKey,
   locationiqKey,
+  streetStyle,
   height,
   width,
   center,
@@ -33,6 +35,7 @@ export function SntDeviceMap({
     <SntMap
       mapboxKey={mapboxKey}
       locationiqKey={locationiqKey}
+      streetStyle={streetStyle}
       height={height}
       width={width}
       center={center}

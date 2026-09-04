@@ -1,5 +1,22 @@
 # Changelog
 
+## 0.8.0
+
+### `@sensolus/snt-agent-kit`
+
+- **`SntMap` street basemap moved from LocationIQ raster tiles to the Mapbox GL vector basemap**, aligning agent apps with the Sensolus platform. New `src/widgets/map/vectorBasemap.js` is a port of the platform's `CommonMapReact/Layers/LayerVectorGL.ts` — Mapbox `light-v11` recolored at runtime with the Sensolus design tokens (`SntColors`), wrapped as a Leaflet layer by `mapbox-gl-leaflet` so all existing overlays (geozones, device markers, clusters, popups) keep working on top. Keep the two files in sync.
+- **`mapboxKey` now drives the street basemap too** (it previously only enabled the satellite layer). No new prop and no config change: an app already passing `mapboxKey` gets the vector basemap. Note the platform splits this into two tokens (`mapbox.gl.access.token` / `mapbox.tiles.access.token`); agent apps use the single injected key for both.
+- **New `streetStyle` prop** — `'default'` (Sensolus transport tints: motorways in brand yellow, the rest muted), `'colorful'`, `'light'`, `'dark'`. Changing the prop re-styles the live GL map instead of rebuilding the layer. New exports `SNT_STREET_STYLES`, `SNT_DEFAULT_STREET_STYLE`, `getSntStreetStyle`, `sntStreetStyleThumbnailUrl` and `isWebGlSupported` let apps build a style picker.
+- **Raster fallback preserved.** Without `mapboxKey`, or in a browser with no WebGL2, `SntMap` builds the raster street layer as before (LocationIQ with `locationiqKey`, OpenStreetMap without). A WebGL context that fails at layer-add time (browsers cap live contexts) is caught and swapped for raster rather than escaping the effect into the app's error boundary — same guard as the platform's STIC-15891 fix.
+- **Map zoom/bounds now match the GL camera:** `minZoom` is derived from the container height (below it, GL renders at a higher zoom than Leaflet and the basemap drifts from the overlays), `maxZoom` is pinned on the map (the GL layer's limits don't register, leaving `getMaxZoom()` at `Infinity` and NaN-crashing `project()`), and `maxBounds` clamps to the Mercator edge (±85.051129°) instead of ±90.
+- Raster street and satellite tiles now request 512px `@2x` tiles on retina screens, matching the platform's raster layer.
+- New dependencies: `mapbox-gl` ^3.26.0 and `mapbox-gl-leaflet` ^0.0.16. Both are externalized from the library build (like `leaflet`) and resolved by the consuming app's bundler.
+
+### `@sensolus/create-snt-agent-app`
+
+- **`MAPBOX_KEY` now also enables the vector street basemap** — no new env var, so existing deployments pick it up on the next image build. `_env.example` and both READMEs updated to describe what each key covers.
+- Template frontend now requires `@sensolus/snt-agent-kit` ^0.8.0.
+
 ## 0.7.14
 
 ### `@sensolus/snt-agent-kit`

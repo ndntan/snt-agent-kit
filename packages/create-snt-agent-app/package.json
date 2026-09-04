@@ -1,6 +1,6 @@
 {
   "name": "@sensolus/create-snt-agent-app",
-  "version": "0.3.21",
+  "version": "0.4.0",
   "description": "Scaffold a new Sensolus agent app: React frontend wired to @sensolus/snt-agent-kit + Flask API proxy backend.",
   "type": "module",
   "bin": {

@@ -21,6 +21,11 @@ MAPBOX_KEY=pk....
 LOCATIONIQ_KEY=pk....
 ```
 
+`MAPBOX_KEY` drives the vector street basemap (Mapbox GL, tinted with the
+Sensolus design tokens — the same basemap the platform renders) and the
+satellite layer; `LOCATIONIQ_KEY` drives the geocoder and the raster street
+fallback used when there is no Mapbox key or no WebGL.
+
 The Flask backend loads `.env` at startup and serves the keys to the frontend
 at runtime via `/api/config` (so they are not baked into the build, and one
 Docker image can deploy across environments — in Docker, pass them with

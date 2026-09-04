@@ -687,9 +687,24 @@ top-right controls (zoom, current location, zoom-to-all). Compose by
 nesting layer children — `SntDeviceLayer`, `SntGeozoneLayer`,
 `SntMarkerClusterLayer`, or your own via `useSntMap()`.
 
-**Tile-provider keys are required props** — the kit ships no keys. In a
-generated app they come from `/api/config` at runtime so one image
-deploys across environments.
+**Street basemap** is the Mapbox GL vector basemap recolored at runtime
+with the Sensolus design tokens — the same basemap the Sensolus platform
+renders (ported from its `LayerVectorGL`; keep the two in sync). Leaflet
+overlays draw on top of it unchanged. It needs `mapboxKey` and WebGL2;
+without either it falls back to raster street tiles (LocationIQ with
+`locationiqKey`, OpenStreetMap without).
+
+`streetStyle` picks the vector style — `'default'` (Sensolus transport
+tints: motorways in brand yellow, everything else muted), `'colorful'`,
+`'light'`, `'dark'`. Changing the prop re-styles the live map. Map over
+`SNT_STREET_STYLES` and `sntStreetStyleThumbnailUrl(key, mapboxKey)` to
+build a style picker.
+
+**Tile-provider keys are required props** — the kit ships no keys.
+`mapboxKey` covers both the vector street basemap and the satellite
+tiles; `locationiqKey` covers the geocoder and the raster street
+fallback. In a generated app they come from `/api/config` at runtime so
+one image deploys across environments.
 
 **Layer chip control** (bottom-left) — every layer registers itself via
 `useLayerToggle({ id, label, icon?, defaultVisible? })` and returns
@@ -704,6 +719,7 @@ const config = useAppConfig()  // {mapboxKey, locationiqKey} from /api/config
 <SntMap
   mapboxKey={config.mapboxKey}
   locationiqKey={config.locationiqKey}
+  streetStyle="default"
   height="480px"
   center={[50.85, 4.35]}
   zoom={6}

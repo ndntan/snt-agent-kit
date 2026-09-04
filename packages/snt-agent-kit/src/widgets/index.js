@@ -51,4 +51,9 @@ export {
   createDeviceIcon,
   SntMarkerClusterLayer,
   SntDeviceMap,
+  SNT_STREET_STYLES,
+  SNT_DEFAULT_STREET_STYLE,
+  getSntStreetStyle,
+  sntStreetStyleThumbnailUrl,
+  isWebGlSupported,
 } from './map'

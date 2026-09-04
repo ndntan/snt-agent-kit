@@ -4,6 +4,8 @@ dist/
 .env
 .DS_Store
 .idea/
-.vscode/
+# VS Code: local settings stay out, the shared task definitions are committed.
+.vscode/*
+!.vscode/tasks.json
 *.iml
 *.tgz

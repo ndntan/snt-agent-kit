@@ -1,19 +1,30 @@
 /**
  * SntMap — base Leaflet map primitive.
  * ============================================================================
- * Owns the shared chrome (tile layers, street/satellite toggle, zoom + scale
+ * Owns the shared chrome (base layers, street/satellite toggle, zoom + scale
  * controls, geocoder). Renders no domain layers. Children that call
  * useSntMap() can add their own Leaflet layers via useEffect (with cleanup).
+ *
+ * The street basemap is the Mapbox GL vector basemap tinted with the Sensolus
+ * design tokens — the same basemap the Sensolus platform renders (see
+ * vectorBasemap.js). It needs `mapboxKey` and WebGL2; without either, the map
+ * falls back to raster street tiles (LocationIQ when `locationiqKey` is set,
+ * OpenStreetMap otherwise).
  *
  * The ready-to-use layer components are <SntGeozoneLayer>, <SntDeviceLayer>,
  * and <SntMarkerClusterLayer>. For the legacy "device + geozones in one prop
  * bag" API, see <SntDeviceMap>.
  *
  * Props:
- *   mapboxKey            - Mapbox token for satellite tiles. Optional — when
- *                          omitted, the satellite layer + toggle are hidden.
- *   locationiqKey        - LocationIQ key for street tiles. Optional — when
- *                          omitted, falls back to OpenStreetMap tiles.
+ *   mapboxKey            - Mapbox token, used for both the vector street
+ *                          basemap and the raster satellite tiles. Optional —
+ *                          without it the street basemap falls back to raster
+ *                          and the satellite layer + toggle are hidden.
+ *   streetStyle          - vector street style: 'default' (Sensolus transport
+ *                          tints), 'colorful', 'light' or 'dark'. See
+ *                          SNT_STREET_STYLES. Changing it re-styles in place.
+ *   locationiqKey        - LocationIQ key for the raster street fallback.
+ *                          Optional — falls back to OpenStreetMap tiles.
  *   height               - default '500px'
  *   width                - default '100%'
  *   center               - [lat, lng], default [50, 10]
@@ -39,6 +50,14 @@ import 'leaflet.markercluster/dist/MarkerCluster.css'
 import 'leaflet.markercluster/dist/MarkerCluster.Default.css'
 import { useSntUi } from '../../SntUiProvider'
 import { makeGeocoderAdapter } from './mapUtils'
+import {
+  MERCATOR_MAX_BOUNDS,
+  SNT_DEFAULT_STREET_STYLE,
+  createVectorStreetLayer,
+  disableWebGl,
+  glSafeMinZoom,
+  isWebGlSupported,
+} from './vectorBasemap'
 
 import streetImg from '../../assets/map/street.png'
 import satelliteImg from '../../assets/map/line.png'
@@ -66,6 +85,7 @@ export function useSntMap() {
 export function SntMap({
   mapboxKey,
   locationiqKey,
+  streetStyle = SNT_DEFAULT_STREET_STYLE,
   height = '500px',
   width = '100%',
   center = [50, 10],
@@ -87,6 +107,7 @@ export function SntMap({
   const hoverTimeout = useRef(null)
   const onZoomToAllRef = useRef(onZoomToAll)
   onZoomToAllRef.current = onZoomToAll
+  const streetStyleRef = useRef(streetStyle)
 
   const [map, setMap] = useState(null)
   const [activeLayer, setActiveLayer] = useState('street') // 'street' | 'satellite'
@@ -94,23 +115,32 @@ export function SntMap({
   const [layerToggles, setLayerToggles] = useState([])
 
   const hasSatellite = Boolean(mapboxKey)
+  // Retina screens get 512px @2x tiles, matching the platform's raster layer.
+  const retina = L.Browser.retina ? '@2x' : ''
   const tileStreets = locationiqKey
-    ? `https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}.png?key=${locationiqKey}`
+    ? `https://{s}-tiles.locationiq.com/v3/streets/r/{z}/{x}/{y}${retina}.png?key=${locationiqKey}`
     : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png'
   const tileSatellite = hasSatellite
-    ? `https://api.tiles.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}.png?access_token=${mapboxKey}`
+    ? `https://api.tiles.mapbox.com/v4/mapbox.satellite/{z}/{x}/{y}${retina}.png?access_token=${mapboxKey}`
     : null
 
   // Initialize the Leaflet map once.
   useEffect(() => {
-    const streets = L.tileLayer(tileStreets, {
-      subdomains: 'abc',
-      minZoom: 2,
-      maxZoom: 22,
-      maxNativeZoom: locationiqKey ? 20 : 19,
-    })
+    // Street basemap: Mapbox GL vector, tinted with the Sensolus tokens. No
+    // token or no WebGL2 means raster street tiles instead.
+    let useRasterStreets = !mapboxKey || !isWebGlSupported()
+    const buildStreets = () => useRasterStreets
+      ? L.tileLayer(tileStreets, {
+          subdomains: 'abc',
+          minZoom: 2,
+          maxZoom: 22,
+          maxNativeZoom: locationiqKey ? 20 : 19,
+        })
+      : createVectorStreetLayer({ mapboxKey, styleKey: streetStyleRef.current })
 
+    let streets = buildStreets()
     streetLayerRef.current = streets
+
     if (tileSatellite) {
       satelliteLayerRef.current = L.tileLayer(tileSatellite, {
         minZoom: 2,
@@ -119,14 +149,48 @@ export function SntMap({
       })
     }
 
+    // Mapbox GL clamps its camera so the world always fills its viewport
+    // vertically; if Leaflet zooms out past that floor, GL renders at a higher
+    // zoom and basemap/overlays drift apart. Keep Leaflet's minZoom at GL's
+    // floor, and pin maxZoom on the map itself — the GL layer's zoom limits
+    // don't register reliably, leaving map.getMaxZoom() = Infinity, which
+    // NaN-crashes every project()/unproject() against it.
+    const minZoom = glSafeMinZoom(containerRef.current?.clientHeight)
+
     const leafletMap = L.map(containerRef.current, {
       center,
-      zoom,
-      layers: [streets],
-      maxBounds: [[-90, -180], [90, 180]],
+      zoom: Math.max(zoom, minZoom),
+      minZoom,
+      maxZoom: 22,
+      maxBounds: MERCATOR_MAX_BOUNDS,
       attributionControl: false,
       zoomControl: false,
     })
+
+    // The GL map is built inside the layer's onAdd, so a failed WebGL context
+    // surfaces here as a synchronous throw. isWebGlSupported() already excluded
+    // browsers that never had WebGL; what's left is a context budget exhausted
+    // at runtime (browsers cap live contexts, ~16 in Chrome). Swap in raster
+    // rather than letting the throw escape this effect — unhandled it reaches
+    // the app's error boundary and replaces the whole page.
+    try {
+      leafletMap.addLayer(streets)
+    } catch (error) {
+      if (useRasterStreets) throw error
+      // Leaflet registers the layer before onAdd throws, so the half-added
+      // layer stays bound to the map's move/zoom events with no GL map behind
+      // it. Drop it before retrying.
+      try {
+        leafletMap.removeLayer(streets)
+      } catch {
+        // never finished adding — nothing to unwind
+      }
+      disableWebGl()
+      useRasterStreets = true
+      streets = buildStreets()
+      streetLayerRef.current = streets
+      leafletMap.addLayer(streets)
+    }
 
     if (showZoomControl) {
       L.control.zoom({ position: 'topright' }).addTo(leafletMap)
@@ -228,6 +292,13 @@ export function SntMap({
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+
+  // Live street-style switching — re-styles the GL map in place instead of
+  // rebuilding the Leaflet layer. No-op on the raster fallback.
+  useEffect(() => {
+    streetStyleRef.current = streetStyle
+    streetLayerRef.current?.setSntStreetStyle?.(streetStyle)
+  }, [streetStyle])
 
   // Street/satellite toggle effect.
   useEffect(() => {

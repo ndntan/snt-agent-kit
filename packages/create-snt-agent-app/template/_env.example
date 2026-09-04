@@ -3,11 +3,15 @@
 # Map provider keys (get them from your team vault). Both are OPTIONAL:
 # the Flask backend reads them at request time and serves them to the
 # frontend via /api/config, so one Docker image works across environments.
-#   MAPBOX_KEY      → enables the SntMap satellite layer + toggle.
-#                     Without it, only OSM street tiles are shown (no satellite).
-#   LOCATIONIQ_KEY  → enables the SntMap geocoder and premium street tiles.
-#                     Without it, tiles fall back to OpenStreetMap and the
-#                     geocoder is disabled.
+#   MAPBOX_KEY      → enables the SntMap vector street basemap (Mapbox GL,
+#                     tinted with the Sensolus tokens — the same basemap the
+#                     platform renders) and the satellite layer + toggle.
+#                     Without it, street tiles fall back to raster and there
+#                     is no satellite layer.
+#   LOCATIONIQ_KEY  → enables the SntMap geocoder and the premium raster street
+#                     tiles used when the vector basemap is unavailable (no
+#                     MAPBOX_KEY, or no WebGL). Without it, raster falls back
+#                     to OpenStreetMap and the geocoder is disabled.
 MAPBOX_KEY=
 LOCATIONIQ_KEY=
 

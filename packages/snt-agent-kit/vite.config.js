@@ -15,13 +15,15 @@ export default defineConfig({
     minify: 'esbuild',
     sourcemap: false,
     rollupOptions: {
-      // Consumers provide react; leaflet stays a regular dependency of this
-      // package but is not bundled (the app's bundler resolves it).
+      // Consumers provide react; leaflet and mapbox-gl stay regular
+      // dependencies of this package but are not bundled (the app's bundler
+      // resolves them, transitively if the app doesn't list them itself).
       external: [
         'react',
         'react-dom',
         'react/jsx-runtime',
         /^leaflet/,
+        /^mapbox-gl/,
       ],
     },
   },

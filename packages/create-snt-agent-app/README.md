@@ -27,7 +27,8 @@ Or open the folder in VS Code and run the default build task
 starts both servers side by side.
 
 `MAPBOX_KEY` and `LOCATIONIQ_KEY` are **optional**: without them `SntMap`
-falls back to OpenStreetMap tiles (no satellite layer, no geocoder).
+falls back to OpenStreetMap raster tiles (no vector basemap, no satellite
+layer, no geocoder).
 
 Open http://localhost:3000. The Vite dev server proxies `/api/*` to Flask on
 `:5000`. In production, Flask serves the built frontend from `frontend/dist/`
@@ -136,9 +137,12 @@ descriptor content in `app.py`.
 
 ## Runtime configuration
 
-Map provider keys (`MAPBOX_KEY`, `LOCATIONIQ_KEY`) are **optional** — without
-them `SntMap` falls back to OpenStreetMap tiles, with no satellite layer and
-no geocoder. They are **never** baked into the frontend bundle: Flask reads
+Map provider keys are **optional**. `MAPBOX_KEY` gives `SntMap` the Mapbox GL
+vector street basemap (Sensolus-tinted, matching the platform) plus the
+satellite layer; `LOCATIONIQ_KEY` adds the geocoder and the premium raster
+street tiles used when the vector basemap is unavailable. Without either,
+`SntMap` falls back to OpenStreetMap raster tiles. They are **never** baked
+into the frontend bundle: Flask reads
 them from env at request time and serves them from `GET /api/config`, which
 `AppConfigContext` fetches on mount.
 Effect: one Docker image deploys to dev/demo/prod — only the container's env
