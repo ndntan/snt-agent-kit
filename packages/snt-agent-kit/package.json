@@ -1,6 +1,6 @@
 {
   "name": "@sensolus/snt-agent-kit",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "description": "Sensolus agent-app kit: Snt* widgets (merged from @sensolus/snt-ui), theme, colors, i18n framework. Locked shared code — import it, don't copy it.",
   "type": "module",
   "files": [

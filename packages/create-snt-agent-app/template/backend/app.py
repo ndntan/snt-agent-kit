@@ -511,17 +511,48 @@ def get_org_stats_totals():
     ])
 
 
-if __name__ == '__main__':
-    # Run DB init (single process, no race)
+def bootstrap():
+    """Create the database, apply migrations and start the scheduler — once
+    per process.
+
+    This runs at import, not under `if __name__ == '__main__'`: in the
+    container gunicorn imports `app:app` (see the Dockerfile CMD), so a
+    __main__-only bootstrap would never fire and the app would serve against a
+    database with no tables and no scheduler.
+    """
     from init_db import ensure_database, run_migrations
     try:
         ensure_database()
-        run_migrations()
+        # Pass the app: letting init_db re-import this module would run every
+        # module-level statement a second time.
+        run_migrations(app)
     except Exception as e:
         logger.warning(f"DB init skipped: {e}")
-
     scheduler.start()
+
+
+# `flask db migrate` builds the app to read its models — bootstrapping there
+# would run the very migrations the command is about to write. The marker
+# lives on `extensions`, not a module global: under `python app.py` this
+# module is imported twice under two names (__main__ and app), which have
+# separate globals and would each think they were first.
+_UNDER_FLASK_CLI = os.path.basename(sys.argv[0]).startswith('flask')
+import extensions  # noqa: E402
+
+if not _UNDER_FLASK_CLI and not getattr(extensions, 'bootstrapped', False):
+    extensions.bootstrapped = True
+    bootstrap()
+
+
+if __name__ == '__main__':
+    # LOCAL DEVELOPMENT ONLY. In the container gunicorn serves the app — see
+    # the Dockerfile CMD. Werkzeug is acceptable here and nowhere else, which
+    # is why allow_unsafe_werkzeug is set unconditionally on this path rather
+    # than tied to FLASK_DEBUG: Flask-SocketIO refuses to start Werkzeug when
+    # stdin is not a terminal unless it is set, and a container has no
+    # terminal — tying the two together is what made the shipped image
+    # unbootable (STIC-16081).
     debug_mode = os.getenv('FLASK_DEBUG', '0').lower() in ('1', 'true', 'yes')
-    logger.info(f"Starting server on port 5000 (scheduler active, debug={debug_mode})")
+    logger.info(f"Starting dev server on port 5000 (scheduler active, debug={debug_mode})")
     socketio.run(app, debug=debug_mode, port=5000, host='0.0.0.0',
-                 allow_unsafe_werkzeug=debug_mode, use_reloader=False)
+                 allow_unsafe_werkzeug=True, use_reloader=False)

@@ -161,7 +161,7 @@ DB_PASSWORD=snt
 1. **Frontend** (React + Vite): Single-page app with React Router for navigation
 2. **Backend** (Flask): Acts as an API proxy to avoid CORS issues when calling the Sensolus API
 3. **Development**: Vite serves the frontend on `:3000` and proxies `/api/*` to Flask on `:5000`
-4. **Production**: Flask serves the built frontend from `frontend/dist/` and handles API requests
+4. **Production**: gunicorn (see the Dockerfile `CMD`) serves the Flask app, which serves the built frontend from `frontend/dist/` and handles API requests. `python app.py` is the development server only — Flask-SocketIO refuses to start Werkzeug without a terminal, so it cannot be the container's entry point
 
 ### API Proxy Flow
 
@@ -503,7 +503,7 @@ import { SntColors } from '@sensolus/snt-agent-kit'
 
 Jenkins pipeline (`Jenkinsfile`) builds the Docker image using a multi-stage build:
 1. Node.js stage builds the React frontend
-2. Python stage serves with Flask
+2. Python stage runs the Flask app under gunicorn (one worker, eight threads — the scheduler and the migrations run in-process, so never more than one worker)
 
 ## License
 

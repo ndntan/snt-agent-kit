@@ -18,7 +18,7 @@ python backend/app.py            # Start Flask backend on :5000 (in separate ter
 
 # Production build
 cd frontend && npm run build     # Build frontend to frontend/dist/
-python backend/app.py            # Serves from frontend/dist/
+python backend/app.py            # Serves from frontend/dist/ (dev server; the image runs gunicorn — see Dockerfile CMD)
 
 # Docker build and run
 docker build -t {{APP_NAME}} .

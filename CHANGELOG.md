@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.1
+
+### `@sensolus/snt-agent-kit`
+
+- Version bump only (publish parity).
+
+### `@sensolus/create-snt-agent-app`
+
+- **Fixed: a scaffolded app failed to boot in the Agent Manager** with `RuntimeError: The Werkzeug web server is not designed to run in production` (STIC-16081). The template's Dockerfile ran `python backend/app.py`, i.e. Flask's development server, and `socketio.run()` passed `allow_unsafe_werkzeug=debug_mode` — Flask-SocketIO refuses to start Werkzeug when no terminal is attached unless that flag is set, and a container has neither a terminal nor `FLASK_DEBUG`. Two changes:
+  - **The image now runs gunicorn** (`--workers 1 --threads 8 --timeout 600`, pinned `gunicorn==23.0.0` in `requirements.txt`). Socket.IO keeps working under it: the `threading` async mode serves WebSocket through `simple-websocket`, which supports gunicorn's threaded workers. Verified: a Socket.IO client connects over both polling and websocket.
+  - **Database init and the scheduler now run at import** (`bootstrap()` in `app.py`, guarded so `flask db …` commands and the double import under `python app.py` do not run them twice; `init_db.run_migrations(app)` takes the app instead of re-importing `app.py`). Under gunicorn the `__main__` block never runs, so anything left there would silently not happen.
+  - `python backend/app.py` stays the **local development** entry and now passes `allow_unsafe_werkzeug=True` unconditionally, so it also boots headless (VS Code task, `start-backend.sh`, a terminal without a TTY).
+  - Template README and CLAUDE.md say which server runs where.
+
 ## 0.8.0
 
 ### `@sensolus/snt-agent-kit`

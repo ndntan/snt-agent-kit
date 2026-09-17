@@ -1,6 +1,9 @@
 """
-Database initialization script.
-Run before starting gunicorn to ensure the database exists and migrations are applied.
+Database initialization.
+
+app.py calls `ensure_database()` and `run_migrations(app)` at import, so the
+container needs no separate init step. Running this file directly
+(`python init_db.py`) does the same by hand.
 """
 import os
 import sys
@@ -59,9 +62,20 @@ def repair_dirty_state():
     engine.dispose()
 
 
-def run_migrations():
-    from app import app
+def run_migrations(app=None):
+    """Apply pending migrations.
+
+    Pass the Flask app in. Falling back to `from app import app` re-imports
+    app.py, and when app.py is also the entry point that is a SECOND import
+    under a different module name — every module-level statement runs again.
+    The fallback is kept only for `python init_db.py`, where nothing else has
+    built an app yet.
+    """
     from flask_migrate import upgrade
+
+    if app is None:
+        from app import app as app_from_module
+        app = app_from_module
 
     with app.app_context():
         logger.info("Running database migrations...")
