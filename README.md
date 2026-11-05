@@ -19,8 +19,8 @@ npm run build        # builds the kit (dist/, minified, no sourcemaps)
 ## Publish (npmjs.com)
 
 - Registry: public npmjs, `@sensolus` org. Config in `.npmrc`.
-- Jenkins publishes both packages when a `v*` tag is built (`Jenkinsfile`).
-- Manual publish: `NPM_TOKEN=... npm run publish:kit`
+- The **Publish to npm** GitHub Actions workflow (`.github/workflows/publish.yml`) publishes both packages. Run it from the Actions tab once the version bumps are on `main`. It uses npm trusted publishing (OIDC), so no npm token is stored anywhere, and every version gets a provenance attestation.
+- Manual publish (package owners only, `npm login` with 2FA): `npm run publish:kit` / `npm run publish:create`
 
 ## Create a new app
 

@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.3
+
+### `@sensolus/snt-agent-kit`
+
+- Version bump only (publish parity). First release published by the **Publish to npm** GitHub Actions workflow with npm trusted publishing instead of a Jenkins npm token; the npm page shows its provenance (the commit and workflow run that built it).
+
+### `@sensolus/create-snt-agent-app` 0.6.3
+
+- Version bump only (publish parity). Published the same way.
+
 ## 0.9.2
 
 ### `@sensolus/snt-agent-kit`
