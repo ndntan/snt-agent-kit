@@ -21,8 +21,8 @@ npm install                          # install all workspaces
 npm run build                        # build the kit only (vite lib build → packages/snt-agent-kit/dist/)
 npm run showcase                     # widget playground at http://localhost:3100/ (HMRs kit src)
 npm test                             # scaffolder tests (node's built-in runner, packages/create-snt-agent-app/test/)
-npm run publish:kit                  # manual publish of @sensolus/snt-agent-kit (needs NPM_TOKEN)
-npm run publish:create               # manual publish of @sensolus/create-snt-agent-app
+npm run publish:kit                  # manual publish of @sensolus/snt-agent-kit (package owners only: npm login + 2FA)
+npm run publish:create               # manual publish of @sensolus/create-snt-agent-app (same)
 ```
 
 No lint script at the repo root, and no tests for the kit itself. Verification = `npm run build`
@@ -30,14 +30,16 @@ succeeds, plus `npm test` when the scaffolder or its template changed.
 
 ## Release / publishing
 
-Jenkins (`Jenkinsfile` at the repo root) runs `npm publish` on BOTH packages whenever a build runs with `PUBLISH=true`. There is no per-package change detection — npm registries reject re-publishing an existing version with `403`.
+The **Publish to npm** GitHub Actions workflow (`.github/workflows/publish.yml`, run by hand from the Actions tab on `main`) publishes BOTH packages. It uses npm trusted publishing: npm swaps the job's GitHub OIDC token for a one-off publish token, so there is no npm token to store or rotate, and every version gets a provenance attestation. It skips a package whose version is already on npm, so a run that failed half-way can simply be re-run, and it fails when neither version is new.
+
+The trusted-publisher setting of each package on npmjs.com names the workflow file (`publish.yml`) and the GitHub environment (`npm`, deployments limited to `main`). Renaming either breaks publishing until a package owner recreates those settings.
 
 **Every code change to a publishable package requires bumping BOTH `package.json` versions in the same commit** — not batched, not "at release time". If you touched either package, bump both:
 
 - `packages/snt-agent-kit/package.json`
 - `packages/create-snt-agent-app/package.json`
 
-The package you didn't touch still needs at least a patch bump — otherwise its `npm publish` will 403 and fail the CI run, blocking the whole release. Miss this and the branch can't ship.
+The package you didn't touch still needs at least a patch bump (publish parity), so every release ships both packages under one `CHANGELOG.md` heading. Without it the workflow skips that package (a notice, not a failure) and the two drift apart; if neither version moved, the run fails.
 
 `packages/widget-showcase/package.json` is `"private": true` and is **not** published — leave its version alone.
 

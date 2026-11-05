@@ -1,0 +1,58 @@
+# Publishes @sensolus/snt-agent-kit and @sensolus/create-snt-agent-app to npmjs.
+# Run it by hand (Actions → Publish to npm → Run workflow) once the version bumps are on main.
+#
+# Authentication is npm trusted publishing: npm swaps this job's GitHub OIDC token for a
+# one-off publish token, so no npm token is stored anywhere. The trusted-publisher setting
+# of each package on npmjs.com names this file (publish.yml) and the `npm` environment;
+# rename either and publishing fails until those settings are recreated.
+name: Publish to npm
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: npm-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest   # trusted publishing needs a GitHub-hosted runner
+    environment: npm         # only main may deploy to it (repo Settings → Environments)
+    permissions:
+      contents: read
+      id-token: write        # lets npm request the OIDC token
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+
+      # No registry-url: nothing here needs a token, and without the placeholder token
+      # setup-node would write, a failed OIDC exchange shows up as a clear ENEEDAUTH.
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '24'   # bundles npm 11; OIDC publishing needs npm >= 11.5.1 (Node 22 bundles npm 10)
+          package-manager-cache: false
+
+      - run: npm ci
+      - run: npm run build
+      - run: npm test
+
+      # Skips a package whose version is already on npm, so a run that failed half-way
+      # can simply be re-run. Fails when neither version is new (the bumps are missing).
+      - name: Publish
+        run: |
+          published=0
+          for dir in packages/snt-agent-kit packages/create-snt-agent-app; do
+            name=$(node -p "require('./$dir/package.json').name")
+            version=$(node -p "require('./$dir/package.json').version")
+            if [ "$(npm view "$name@$version" version 2>/dev/null)" = "$version" ]; then
+              echo "::notice::$name@$version is already on npm, skipped"
+            else
+              npm publish --workspace="$dir"
+              published=$((published + 1))
+            fi
+          done
+          if [ "$published" -eq 0 ]; then
+            echo "::error::Nothing to publish: both versions are already on npm. Bump them in package.json first."
+            exit 1
+          fi
