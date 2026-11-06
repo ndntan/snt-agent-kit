@@ -10,7 +10,7 @@
   "scripts": {
     "build": "npm run build --workspace=@sensolus/snt-agent-kit",
     "showcase": "npm run dev --workspace=@sensolus/widget-showcase",
-    "test": "node --test packages/create-snt-agent-app/test/",
+    "test": "node --test packages/create-snt-agent-app/test/*.test.mjs",
     "publish:kit": "npm publish --workspace=@sensolus/snt-agent-kit",
     "publish:create": "npm publish --workspace=@sensolus/create-snt-agent-app"
   },
